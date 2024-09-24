@@ -1,6 +1,7 @@
 package com.example.disastermapperfrontend
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -21,29 +22,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.database.FirebaseDatabase
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
-            var showRegistration by remember { mutableStateOf(false) }
-
-            if (isLoggedIn) {
-                ChatApp(onLogout = { isLoggedIn = false })
-            } else {
-                if (showRegistration) {
-                    RegistrationScreen(onRegistrationSuccess = { isLoggedIn = true })
-                } else {
-                    LoginScreen(
-                        onLoginSuccess = { isLoggedIn = true },
-                        onRegisterClick = { showRegistration = true }
-                    )
-                }
-            }
+//            FirebaseDatabase.getInstance().setPersistenceEnabled(true)
+            FirebaseApp.initializeApp(this);
+            MainScreen()
         }
     }
 }
@@ -51,15 +48,41 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ChatApp(viewModel: ChatViewModel = viewModel(), onLogout: () -> Unit) {
     val messages by viewModel.messages.collectAsState()
+    val currentUsername by viewModel.currentUsername.collectAsState()
     var newMessage by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Welcome, $currentUsername!",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Button(
+                onClick = {
+                    FirebaseAuth.getInstance().signOut()
+                    onLogout()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Text("Logout")
+            }
+        }
         LazyColumn(
             modifier = Modifier.weight(1f),
             reverseLayout = true
         ) {
             items(messages.reversed()) { message ->
-                MessageBubble(message)
+                MessageBubble(message, isCurrentUser = message.sender == FirebaseAuth.getInstance().currentUser?.uid)
             }
         }
 
@@ -87,90 +110,150 @@ fun ChatApp(viewModel: ChatViewModel = viewModel(), onLogout: () -> Unit) {
                 Text("Send")
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = {
-                logout(onLogout)
-            },
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        ) {
-            Text("Log Out")
-        }
     }
 }
 
-fun logout(onLogout: () -> Unit) {
-    FirebaseAuth.getInstance().signOut()
-    onLogout()
-}
-
 @Composable
-fun MessageBubble(message: Message) {
-    Row(
+fun MessageBubble(message: Message, isCurrentUser: Boolean) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
-        horizontalArrangement = if (message.sender == FirebaseAuth.getInstance().currentUser?.uid) Arrangement.End else Arrangement.Start
+        horizontalAlignment = if (isCurrentUser) Alignment.End else Alignment.Start
     ) {
         Surface(
             shape = MaterialTheme.shapes.medium,
             shadowElevation = 1.dp,
-            color = if (message.sender == FirebaseAuth.getInstance().currentUser?.uid) MaterialTheme.colorScheme .primary else MaterialTheme.colorScheme .secondary
-        ) {
-            Text(
-                text = message.content,
-                modifier = Modifier.padding(8.dp),
-                color = MaterialTheme.colorScheme .onPrimary
+            color = if (isCurrentUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+            content = {
+                Text(
+                    text = message.content,
+                    modifier = Modifier.padding(8.dp),
+                    color = if (isCurrentUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondary
+                )
+            }
+        )
+        Text(
+            text = message.senderUsername,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+        )
+    }
+}
+
+@Composable
+fun AuthScreen(
+    onLoginSuccess: () -> Unit,
+    onRegistrationSuccess: () -> Unit
+) {
+    var isLogin by rememberSaveable  { mutableStateOf(true) }
+    var email by rememberSaveable  { mutableStateOf("") }
+    var password by rememberSaveable  { mutableStateOf("") }
+    var username by rememberSaveable  { mutableStateOf("") }
+    var errorMessage by rememberSaveable  { mutableStateOf<String?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = if (isLogin) "Login" else "Sign Up",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        TextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        TextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        if (!isLogin) {
+            Spacer(modifier = Modifier.height(8.dp))
+            TextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Username") },
+                modifier = Modifier.fillMaxWidth()
             )
         }
-    }
-}
 
-@Composable
-fun LoginScreen(onLoginSuccess: () -> Unit, onRegisterClick: () -> Unit) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-        TextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        TextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
-        )
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
-                FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
-                    .addOnSuccessListener { onLoginSuccess() }
-                    .addOnFailureListener { errorMessage = it.localizedMessage }
+                if (isLogin) {
+                    // Login logic
+                    FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
+                        .addOnSuccessListener {
+                            Log.i("AuthScreen", "Login successful for email: $email")
+                            onLoginSuccess()
+                            email = ""
+                            password = ""
+                        }
+                        .addOnFailureListener { errorMessage = it.localizedMessage }
+                } else {
+                    // Sign up logic
+                    FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
+                        .addOnSuccessListener { result ->
+                            result.user?.let { user ->
+                                Log.i("AuthScreen", "User created with UID: ${user.uid}")
+                                FirebaseDatabase.getInstance("https://disastermapperchat-default-rtdb.asia-southeast1.firebasedatabase.app/").reference
+                                    .child("users")
+                                    .child(user.uid)
+                                    .child("username")
+                                    .setValue(username)
+                                    .addOnSuccessListener {
+                                        Log.i("AuthScreen", "Username set for UID: ${user.uid}")
+//                                        onRegistrationSuccess()
+                                        email = ""
+                                        password = ""
+                                        username = ""
+                                        isLogin = true
+                                    }
+                                    .addOnFailureListener { error ->
+                                        Log.e("AuthScreen", "Failed to set username: ${error.localizedMessage}")
+                                        errorMessage = error.localizedMessage
+                                    }
+                            } ?: run {
+                                Log.e("AuthScreen", "User creation failed: User is null")
+                                errorMessage = "User creation failed"
+                            }
+                        }
+                        .addOnFailureListener { exception ->
+                            if (exception is FirebaseAuthException && exception.errorCode == "ERROR_EMAIL_ALREADY_IN_USE") {
+                                errorMessage = "Email address is already in use."
+                            } else {
+                                errorMessage = exception.localizedMessage
+                            }
+                            Log.e("AuthScreen", "Sign up failed: ${exception.localizedMessage}")
+                        }
+
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Login")
+            Text(if (isLogin) "Login" else "Sign Up")
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = onRegisterClick,
+
+        TextButton(
+            onClick = { isLogin = !isLogin },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Register")
+            Text(if (isLogin) "Need an account? Sign Up" else "Already have an account? Login")
         }
+
         errorMessage?.let {
             Text(it, color = MaterialTheme.colorScheme.error)
         }
@@ -178,45 +261,18 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onRegisterClick: () -> Unit) {
 }
 
 @Composable
-fun RegistrationScreen(onRegistrationSuccess: () -> Unit) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+fun MainScreen() {
+    var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-        TextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
+    if (isLoggedIn) {
+        ChatApp(
+            onLogout = { isLoggedIn = false }
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        TextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+    } else {
+        AuthScreen(
+            onLoginSuccess = { isLoggedIn = true },
+            onRegistrationSuccess = { isLoggedIn = true }
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = {
-                FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
-                    .addOnSuccessListener { onRegistrationSuccess() }
-                    .addOnFailureListener { errorMessage = it.localizedMessage }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Register")
-        }
-        errorMessage?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
-        }
     }
 }
 
