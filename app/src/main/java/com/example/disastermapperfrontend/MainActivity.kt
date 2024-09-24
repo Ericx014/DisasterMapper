@@ -18,9 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.disastermapperfrontend.ui.theme.DisasterMapperFrontendTheme
 
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -32,18 +30,26 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+            var showRegistration by remember { mutableStateOf(false) }
 
             if (isLoggedIn) {
-                ChatApp()
+                ChatApp(onLogout = { isLoggedIn = false })
             } else {
-                LoginScreen(onLoginSuccess = { isLoggedIn = true })
+                if (showRegistration) {
+                    RegistrationScreen(onRegistrationSuccess = { isLoggedIn = true })
+                } else {
+                    LoginScreen(
+                        onLoginSuccess = { isLoggedIn = true },
+                        onRegisterClick = { showRegistration = true }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun ChatApp(viewModel: ChatViewModel = viewModel()) {
+fun ChatApp(viewModel: ChatViewModel = viewModel(), onLogout: () -> Unit) {
     val messages by viewModel.messages.collectAsState()
     var newMessage by remember { mutableStateOf("") }
 
@@ -81,7 +87,22 @@ fun ChatApp(viewModel: ChatViewModel = viewModel()) {
                 Text("Send")
             }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = {
+                logout(onLogout)
+            },
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Text("Log Out")
+        }
     }
+}
+
+fun logout(onLogout: () -> Unit) {
+    FirebaseAuth.getInstance().signOut()
+    onLogout()
 }
 
 @Composable
@@ -105,16 +126,9 @@ fun MessageBubble(message: Message) {
         }
     }
 }
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
+fun LoginScreen(onLoginSuccess: () -> Unit, onRegisterClick: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -150,17 +164,59 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
         ) {
             Text("Login")
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onRegisterClick,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Register")
+        }
         errorMessage?.let {
-            Text(it, color = MaterialTheme.colorScheme .error)
+            Text(it, color = MaterialTheme.colorScheme.error)
         }
     }
 }
 
-
-@Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
-    DisasterMapperFrontendTheme {
-        Greeting("Android")
+fun RegistrationScreen(onRegistrationSuccess: () -> Unit) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        TextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        TextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
+                    .addOnSuccessListener { onRegistrationSuccess() }
+                    .addOnFailureListener { errorMessage = it.localizedMessage }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Register")
+        }
+        errorMessage?.let {
+            Text(it, color = MaterialTheme.colorScheme.error)
+        }
     }
 }
+
