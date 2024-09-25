@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 class ChatViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
-    private val database = FirebaseDatabase.getInstance().reference
+    private val database = FirebaseDatabase.getInstance("https://disastermapperchat-default-rtdb.asia-southeast1.firebasedatabase.app/").reference
 
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: StateFlow<List<Message>> = _messages
@@ -30,7 +30,7 @@ class ChatViewModel : ViewModel() {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val message = snapshot.getValue(Message::class.java)
                 message?.let {
-                    _messages.value = _messages.value + it
+                    _messages.value += it
                 }
             }
 
@@ -41,6 +41,7 @@ class ChatViewModel : ViewModel() {
                 Log.e("ChatViewModel", "Database error: ${error.message}", error.toException())
             }
         })
+        Log.i("ChatViewModel", "Messages loaded")
     }
 
     private fun loadCurrentUsername() {
@@ -59,18 +60,18 @@ class ChatViewModel : ViewModel() {
             return
         }
 
-        user?.let {
+        user.let {
             val messageId = database.child("messages").push().key ?: return
             val message = Message(
                 id = messageId,
-                sender = it.uid,
+                sender = user.uid,
                 content = content,
                 timestamp = System.currentTimeMillis(),
                 senderUsername = currentUsername.value
             )
             database.child("messages").child(messageId).setValue(message)
                 .addOnSuccessListener {
-                    Log.e("ChatViewModel", "Success in sending message")
+                    Log.i("ChatViewModel", "${currentUsername.value} sent a message")
                     // Message saved successfully
                 }
                 .addOnFailureListener { e ->

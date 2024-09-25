@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
 //            FirebaseDatabase.getInstance().setPersistenceEnabled(true)
-            FirebaseApp.initializeApp(this);
+            FirebaseApp.initializeApp(this)
             MainScreen()
         }
     }
@@ -144,7 +144,7 @@ fun MessageBubble(message: Message, isCurrentUser: Boolean) {
 @Composable
 fun AuthScreen(
     onLoginSuccess: () -> Unit,
-    onRegistrationSuccess: () -> Unit
+//    onRegistrationSuccess: () -> Unit
 ) {
     var isLogin by rememberSaveable  { mutableStateOf(true) }
     var email by rememberSaveable  { mutableStateOf("") }
@@ -197,7 +197,7 @@ fun AuthScreen(
                     // Login logic
                     FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
                         .addOnSuccessListener {
-                            Log.i("AuthScreen", "Login successful for email: $email")
+                            Log.i("AuthScreen", "Login successful for email: $email, user: $username")
                             onLoginSuccess()
                             email = ""
                             password = ""
@@ -232,13 +232,14 @@ fun AuthScreen(
                             }
                         }
                         .addOnFailureListener { exception ->
-                            if (exception is FirebaseAuthException && exception.errorCode == "ERROR_EMAIL_ALREADY_IN_USE") {
-                                errorMessage = "Email address is already in use."
+                            errorMessage = if (exception is FirebaseAuthException && exception.errorCode == "ERROR_EMAIL_ALREADY_IN_USE") {
+                                "Email address is already in use."
                             } else {
-                                errorMessage = exception.localizedMessage
+                                exception.localizedMessage
                             }
-                            Log.e("AuthScreen", "Sign up failed: ${exception.localizedMessage}")
+                            Log.e("AuthScreen", "Sign up failed: $errorMessage")
                         }
+
 
                 }
             },
@@ -271,7 +272,7 @@ fun MainScreen() {
     } else {
         AuthScreen(
             onLoginSuccess = { isLoggedIn = true },
-            onRegistrationSuccess = { isLoggedIn = true }
+//            onRegistrationSuccess = { isLoggedIn = true }
         )
     }
 }
