@@ -22,8 +22,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -33,6 +47,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,68 +61,169 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun ChatApp(viewModel: ChatViewModel = viewModel(), onLogout: () -> Unit) {
+fun MainScreen() {
+    var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+    var showChat by remember { mutableStateOf(false) }
+
+    if (isLoggedIn) {
+        if (showChat) {
+            ChatScreen(
+                onBackToHome = { showChat = false }
+            )
+        } else {
+            HomeScreen(
+                onChatClick = { showChat = true },
+                handleLogout = { isLoggedIn = false }
+            )
+        }
+    } else {
+        AuthScreen(
+            handleLogin = { isLoggedIn = true }
+        )
+    }
+}
+
+@Composable
+fun SideBarContent(handleLogout: () -> Unit){
+    ModalDrawerSheet {
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Menu", modifier = Modifier.padding(16.dp))
+        Divider()
+        Spacer(modifier = Modifier.weight(1f))
+        Button(
+            onClick = handleLogout,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(text = "Logout")
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun HomeTopBar(onChatClick: () -> Unit, openDrawer: () -> Unit) {
+    TopAppBar(
+        title = { Text("Home") },
+        navigationIcon = {
+            IconButton(onClick = { openDrawer() }) {
+                Icon(
+                    imageVector = Icons.Filled.Menu,
+                    contentDescription = "Menu"
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = onChatClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Chat,
+                    contentDescription = "Chat"
+                )
+            }
+        }
+    )
+}
+
+@Composable
+fun HomeScreen(onChatClick: () -> Unit, handleLogout: () -> Unit) {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    fun openDrawer() {
+        scope.launch { drawerState.open() }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = { SideBarContent(handleLogout = handleLogout) }
+    ) {
+        Scaffold(
+            topBar = {
+                HomeTopBar(
+                    onChatClick = onChatClick,
+                    openDrawer = {openDrawer()})
+            }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                Text(
+                    "Welcome to the Home Page",
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChatScreen(
+    viewModel: ChatViewModel = viewModel(),
+    onBackToHome: () -> Unit
+) {
     val messages by viewModel.messages.collectAsState()
     val currentUsername by viewModel.currentUsername.collectAsState()
     var newMessage by remember { mutableStateOf("") }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Chat") },
+                navigationIcon = {
+                    IconButton(onClick = onBackToHome) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to Home")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .fillMaxSize()
+                .padding(innerPadding)
         ) {
             Text(
                 text = "Welcome, $currentUsername!",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.titleMedium
             )
-            Button(
-                onClick = {
-                    FirebaseAuth.getInstance().signOut()
-                    onLogout()
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError
-                )
-            ) {
-                Text("Logout")
-            }
-        }
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            reverseLayout = true
-        ) {
-            items(messages.reversed()) { message ->
-                MessageBubble(message, isCurrentUser = message.sender == FirebaseAuth.getInstance().currentUser?.uid)
-            }
-        }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextField(
-                value = newMessage,
-                onValueChange = { newMessage = it },
+            LazyColumn(
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Type a message") }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = {
-                    if (newMessage.isNotBlank()) {
-                        viewModel.sendMessage(newMessage)
-                        newMessage = ""
-                    }
-                }
+                reverseLayout = true
             ) {
-                Text("Send")
+                items(messages.reversed()) { message ->
+                    MessageBubble(message, isCurrentUser = message.sender == FirebaseAuth.getInstance().currentUser?.uid)
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextField(
+                    value = newMessage,
+                    onValueChange = { newMessage = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Type a message") }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        if (newMessage.isNotBlank()) {
+                            viewModel.sendMessage(newMessage)
+                            newMessage = ""
+                        }
+                    }
+                ) {
+                    Text("Send")
+                }
             }
         }
     }
@@ -143,8 +259,7 @@ fun MessageBubble(message: Message, isCurrentUser: Boolean) {
 
 @Composable
 fun AuthScreen(
-    onLoginSuccess: () -> Unit,
-//    onRegistrationSuccess: () -> Unit
+    handleLogin: () -> Unit,
 ) {
     var isLogin by rememberSaveable  { mutableStateOf(true) }
     var email by rememberSaveable  { mutableStateOf("") }
@@ -194,17 +309,15 @@ fun AuthScreen(
         Button(
             onClick = {
                 if (isLogin) {
-                    // Login logic
                     FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
                         .addOnSuccessListener {
                             Log.i("AuthScreen", "Login successful for email: $email, user: $username")
-                            onLoginSuccess()
+                            handleLogin()
                             email = ""
                             password = ""
                         }
                         .addOnFailureListener { errorMessage = it.localizedMessage }
                 } else {
-                    // Sign up logic
                     FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
                         .addOnSuccessListener { result ->
                             result.user?.let { user ->
@@ -216,7 +329,6 @@ fun AuthScreen(
                                     .setValue(username)
                                     .addOnSuccessListener {
                                         Log.i("AuthScreen", "Username set for UID: ${user.uid}")
-//                                        onRegistrationSuccess()
                                         email = ""
                                         password = ""
                                         username = ""
@@ -239,8 +351,6 @@ fun AuthScreen(
                             }
                             Log.e("AuthScreen", "Sign up failed: $errorMessage")
                         }
-
-
                 }
             },
             modifier = Modifier.fillMaxWidth()
@@ -260,20 +370,3 @@ fun AuthScreen(
         }
     }
 }
-
-@Composable
-fun MainScreen() {
-    var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
-
-    if (isLoggedIn) {
-        ChatApp(
-            onLogout = { isLoggedIn = false }
-        )
-    } else {
-        AuthScreen(
-            onLoginSuccess = { isLoggedIn = true },
-//            onRegistrationSuccess = { isLoggedIn = true }
-        )
-    }
-}
-
