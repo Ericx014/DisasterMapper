@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -22,9 +23,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
@@ -39,6 +42,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.sp
@@ -49,6 +53,14 @@ import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
 
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +68,76 @@ class MainActivity : ComponentActivity() {
 //            FirebaseDatabase.getInstance().setPersistenceEnabled(true)
             FirebaseApp.initializeApp(this)
             MainScreen()
+        }
+    }
+}
+
+@Composable
+fun MapScreen() {
+    var isFullScreen by remember { mutableStateOf(false) }
+
+    val mapViewModifier = if (isFullScreen) {
+        Modifier.fillMaxSize()
+    } else {
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .aspectRatio(1f)
+            .fillMaxHeight(0.5f)
+    }
+
+    val shopLocation = GeoPoint(40.7128, -74.0060)  // Replace with your shop's coordinates
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { context ->
+                MapView(context).apply {
+                    Configuration.getInstance().userAgentValue = context.packageName
+                    setTileSource(TileSourceFactory.MAPNIK)
+                    controller.setZoom(18.0)
+                    controller.setCenter(shopLocation)
+
+                    val marker = Marker(this)
+                    marker.position = shopLocation
+                    marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    marker.title = "Shop Location"
+                    overlays.add(marker)
+                }
+            },
+            modifier = mapViewModifier,
+            update = { mapView ->
+                mapView.onResume()
+                mapView.controller.setCenter(shopLocation)
+                mapView.controller.setZoom(if (isFullScreen) 18.0 else 17.0)
+            }
+        )
+
+        if (isFullScreen) {
+            IconButton(
+                onClick = { isFullScreen = false },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
+                    .zIndex(1f)
+                    .background(Color.White, shape = RoundedCornerShape(8.dp))
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        if (!isFullScreen) {
+            Button(
+                onClick = { isFullScreen = true },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+            ) {
+                Text("Expand to Full Screen")
+            }
         }
     }
 }
@@ -150,10 +232,11 @@ fun HomeScreen(onChatClick: () -> Unit, handleLogout: () -> Unit) {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                Text(
-                    "Welcome to the Home Page",
-                    modifier = Modifier.align(Alignment.Center)
-                )
+//                Text(
+//                    "Welcome to the Home Page",
+//                    modifier = Modifier.align(Alignment.Center)
+//                )
+                MapScreen()
             }
         }
     }

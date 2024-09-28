@@ -67,6 +67,9 @@ dependencies {
     implementation(libs.firebase.auth.ktx)
     implementation(libs.compose.material.icons.extended)
 
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
+    implementation("org.osmdroid:osmdroid-mapsforge:6.1.20")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
