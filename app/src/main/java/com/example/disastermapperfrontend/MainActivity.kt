@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -23,11 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
@@ -40,11 +42,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
@@ -55,11 +61,18 @@ import kotlinx.coroutines.launch
 
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import java.io.IOException
+import java.lang.Exception
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,45 +86,111 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MapScreen() {
+fun ConnectionStatus(modifier: Modifier = Modifier) {
+    var isConnected by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            try {
+                withContext(Dispatchers.IO) {
+                    val url = URL("http://192.168.0.102:8000")
+                    val connection = url.openConnection() as HttpURLConnection
+                    connection.connectTimeout = 5000 // 5 seconds
+                    connection.readTimeout = 5000 // 5 seconds
+
+                    val responseCode = connection.responseCode
+                    Log.i("ConnectionStatus", "Response Code: $responseCode")
+
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        val response = connection.inputStream.bufferedReader().use { it.readText() }
+                        Log.i("ConnectionStatus", "Response: $response")
+                        isConnected = response.trim().toBoolean()
+                    } else {
+                        throw IOException("HTTP error code: $responseCode")
+                    }
+                }
+                errorMessage = null
+            } catch (e: Exception) {
+                isConnected = false
+                Log.e("ConnectionStatus", "Error: ${e.javaClass.simpleName} - ${e.message}", e)
+                errorMessage = "${e.javaClass.simpleName}: ${e.message}"
+            }
+            delay(1000)
+        }
+    }
+    Surface(
+        modifier = Modifier
+            .padding(16.dp),
+        shape = RoundedCornerShape(12.dp) ,
+        shadowElevation = 6.dp
+    ) {
+        Text(
+            modifier = Modifier.padding(12.dp),
+            text = if (isConnected) "Connection: Valid" else "Connection: Invalid",
+            color = if (isConnected) Color.Green else Color.Red
+        )
+    }
+}
+
+
+@Composable
+fun MapScreen(modifier: Modifier = Modifier) {
     var isFullScreen by remember { mutableStateOf(false) }
 
     val mapViewModifier = if (isFullScreen) {
         Modifier.fillMaxSize()
     } else {
         Modifier
-            .fillMaxWidth()
+            .fillMaxWidth(0.5f)
             .padding(horizontal = 16.dp)
             .aspectRatio(1f)
-            .fillMaxHeight(0.5f)
     }
 
-    val shopLocation = GeoPoint(40.7128, -74.0060)  // Replace with your shop's coordinates
+    val centerLocation = GeoPoint(3.0784554644075564, 101.55352203251948 ) // Replace with your shop's coordinates
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            factory = { context ->
-                MapView(context).apply {
-                    Configuration.getInstance().userAgentValue = context.packageName
-                    setTileSource(TileSourceFactory.MAPNIK)
-                    controller.setZoom(18.0)
-                    controller.setCenter(shopLocation)
+    Box(
+        modifier = Modifier
+            .fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Surface(
+            modifier = mapViewModifier
+                .border(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .clip(RoundedCornerShape(16.dp))
+//            shadowElevation = 10.dp
+        ) {
+            AndroidView(
+                factory = { context ->
+                    MapView(context).apply {
+                        Configuration.getInstance().userAgentValue = context.packageName
+                        setTileSource(TileSourceFactory.MAPNIK)
+                        controller.setZoom(20.0)
+                        controller.setCenter(centerLocation)
 
-                    val marker = Marker(this)
-                    marker.position = shopLocation
-                    marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                    marker.title = "Shop Location"
-                    overlays.add(marker)
+                        val marker = Marker(this)
+                        marker.position = centerLocation
+                        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        marker.title = "Shop Location"
+                        overlays.add(marker)
+                    }
+                },
+                update = { mapView ->
+                    mapView.onResume()
+                    mapView.controller.setCenter(centerLocation)
+                    mapView.controller.setZoom(if (isFullScreen) 18.0 else 20.0)
                 }
-            },
-            modifier = mapViewModifier,
-            update = { mapView ->
-                mapView.onResume()
-                mapView.controller.setCenter(shopLocation)
-                mapView.controller.setZoom(if (isFullScreen) 18.0 else 17.0)
-            }
+            )
+        }
+        ConnectionStatus(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
         )
-
         if (isFullScreen) {
             IconButton(
                 onClick = { isFullScreen = false },
@@ -166,11 +245,25 @@ fun MainScreen() {
 }
 
 @Composable
-fun SideBarContent(handleLogout: () -> Unit){
+fun SideBarContent(viewModel: ChatViewModel = viewModel(), handleLogout: () -> Unit){
+    val currentUsername by viewModel.currentUsername.collectAsState()
+
     ModalDrawerSheet {
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Menu", modifier = Modifier.padding(16.dp))
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "Disaster Mapper",
+            modifier = Modifier.padding(16.dp),
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp)
         Divider()
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = currentUsername,
+                fontSize = 20.sp
+            )
+        }
         Spacer(modifier = Modifier.weight(1f))
         Button(
             onClick = handleLogout,
@@ -231,12 +324,9 @@ fun HomeScreen(onChatClick: () -> Unit, handleLogout: () -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+//                    .verticalScroll(rememberScrollState())
             ) {
-//                Text(
-//                    "Welcome to the Home Page",
-//                    modifier = Modifier.align(Alignment.Center)
-//                )
-                MapScreen()
+                    MapScreen()
             }
         }
     }
