@@ -247,6 +247,7 @@ fun MainScreen() {
 @Composable
 fun SideBarContent(viewModel: ChatViewModel = viewModel(), handleLogout: () -> Unit){
     val currentUsername by viewModel.currentUsername.collectAsState()
+    val currentUserEmail by viewModel.currentUserEmail.collectAsState()
 
     ModalDrawerSheet {
         Spacer(modifier = Modifier.height(2.dp))
@@ -261,6 +262,10 @@ fun SideBarContent(viewModel: ChatViewModel = viewModel(), handleLogout: () -> U
         ) {
             Text(
                 text = currentUsername,
+                fontSize = 20.sp
+            )
+            Text(
+                text = currentUserEmail,
                 fontSize = 20.sp
             )
         }

@@ -20,9 +20,13 @@ class ChatViewModel : ViewModel() {
     private val _currentUsername = MutableStateFlow("")
     val currentUsername: StateFlow<String> = _currentUsername
 
+    private val _currentUserEmail = MutableStateFlow("")
+    val currentUserEmail: StateFlow<String> = _currentUserEmail
+
     init {
         loadMessages()
         loadCurrentUsername()
+        loadCurrentEmail()
     }
 
     private fun loadMessages() {
@@ -49,7 +53,15 @@ class ChatViewModel : ViewModel() {
             database.child("users").child(user.uid).child("username").get()
                 .addOnSuccessListener { snapshot ->
                     _currentUsername.value = snapshot.value as? String ?: ""
+                    Log.i("ChatViewModel", "Username loaded: ${_currentUsername.value}")
                 }
+        }
+    }
+
+    private fun loadCurrentEmail() {
+        auth.currentUser?.let { user ->
+            _currentUserEmail.value = user.email ?: ""
+            Log.i("ChatViewModel", "User email loaded: ${_currentUserEmail.value}")
         }
     }
 
