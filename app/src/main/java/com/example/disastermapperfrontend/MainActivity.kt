@@ -61,18 +61,11 @@ import kotlinx.coroutines.launch
 
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import java.io.IOException
-import java.lang.Exception
-import java.net.HttpURLConnection
-import java.net.URL
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,39 +79,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun ConnectionStatus(modifier: Modifier = Modifier) {
-    var isConnected by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+fun ConnectionStatus(viewModel: ChatViewModel = viewModel(), modifier: Modifier = Modifier) {
+    val isConnected by viewModel.isConnected.collectAsState()
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            try {
-                withContext(Dispatchers.IO) {
-                    val url = URL("http://192.168.0.102:8000")
-                    val connection = url.openConnection() as HttpURLConnection
-                    connection.connectTimeout = 5000 // 5 seconds
-                    connection.readTimeout = 5000 // 5 seconds
-
-                    val responseCode = connection.responseCode
-                    Log.i("ConnectionStatus", "Response Code: $responseCode")
-
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        val response = connection.inputStream.bufferedReader().use { it.readText() }
-                        Log.i("ConnectionStatus", "Response: $response")
-                        isConnected = response.trim().toBoolean()
-                    } else {
-                        throw IOException("HTTP error code: $responseCode")
-                    }
-                }
-                errorMessage = null
-            } catch (e: Exception) {
-                isConnected = false
-                Log.e("ConnectionStatus", "Error: ${e.javaClass.simpleName} - ${e.message}", e)
-                errorMessage = "${e.javaClass.simpleName}: ${e.message}"
-            }
-            delay(1000)
-        }
-    }
     Surface(
         modifier = Modifier
             .padding(16.dp),

@@ -2,13 +2,20 @@ package com.example.disastermapperfrontend
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 
 class ChatViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
@@ -23,10 +30,14 @@ class ChatViewModel : ViewModel() {
     private val _currentUserEmail = MutableStateFlow("")
     val currentUserEmail: StateFlow<String> = _currentUserEmail
 
+    private val _isConnected = MutableStateFlow(false)
+    val isConnected: StateFlow<Boolean> = _isConnected
+
     init {
         loadMessages()
         loadCurrentUsername()
         loadCurrentEmail()
+        startConnectionCheck()
     }
 
     private fun loadMessages() {
@@ -64,6 +75,41 @@ class ChatViewModel : ViewModel() {
             Log.i("ChatViewModel", "User email loaded: ${_currentUserEmail.value}")
         }
     }
+
+    private fun startConnectionCheck() {
+        viewModelScope.launch {
+            while(true) {
+                checkConnection()
+                kotlinx.coroutines.delay(1000)
+            }
+        }
+    }
+
+    private suspend fun checkConnection() {
+        try {
+            withContext(Dispatchers.IO) {
+                val url = URL("http://192.168.0.102:8000")
+                val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 5000 // 5 seconds
+                connection.readTimeout = 5000 // 5 seconds
+
+                val responseCode = connection.responseCode
+                Log.i("ConnectionStatus", "Response Code: $responseCode")
+
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val response = connection.inputStream.bufferedReader().use { it.readText() }
+                    Log.i("ConnectionStatus", "Response: $response")
+                    _isConnected.value = response.trim().toBoolean()
+                } else {
+                    throw IOException("HTTP error code: $responseCode")
+                }
+            }
+        } catch (e: Exception) {
+            _isConnected.value = false
+            Log.e("ConnectionStatus", "Error: ${e.javaClass.simpleName} - ${e.message}", e)
+        }
+    }
+
 
     fun sendMessage(content: String) {
         val user = auth.currentUser
