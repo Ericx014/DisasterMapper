@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -148,7 +149,11 @@ class ChatViewModel : ViewModel() {
         }
     }
 
-    fun login(email: String, password: String, handleLogin: () -> Unit){
+    fun logIn(
+        email: String,
+        password: String,
+        handleLogin: () -> Unit
+    ){
         FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
             .addOnSuccessListener {
                 Log.i("Login", "Login successful for email: $email")
@@ -158,4 +163,40 @@ class ChatViewModel : ViewModel() {
                 Log.e("Login", "Login failed", exception)
             }
     }
+
+    fun signUp(
+        email: String,
+        password: String,
+        username: String,
+        onSignUpSuccess: () -> Unit,
+        onSignUpFailure: (String) -> Unit
+    ){
+        FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
+            .addOnSuccessListener { result ->
+                result.user?.let { user ->
+                    Log.i("AuthScreen", "User created with UID: ${user.uid}")
+                    FirebaseDatabase.getInstance("https://disastermapperchat-default-rtdb.asia-southeast1.firebasedatabase.app/").reference
+                        .child("users")
+                        .child(user.uid)
+                        .child("username")
+                        .setValue(username)
+                        .addOnSuccessListener {
+                            Log.i("SignUp", "Username set for UID: ${user.uid}")
+                            onSignUpSuccess()
+                        }
+                        .addOnFailureListener { error ->
+                            Log.e("SignUp", "Failed to set username: ${error.localizedMessage}")
+                            onSignUpFailure(error.localizedMessage ?: "Sign up error")
+                        }
+                } ?: run {
+                    Log.e("SignUp", "User creation failed: User cannot be null")
+                    onSignUpFailure("User cannot be null")
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.e("SignUp", "Sign up failed", exception)
+                onSignUpFailure(exception.localizedMessage ?: "Unknown error occurred")
+            }
+    }
+
 }

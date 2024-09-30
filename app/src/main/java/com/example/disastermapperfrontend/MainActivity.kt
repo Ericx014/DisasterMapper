@@ -426,11 +426,11 @@ fun AuthScreen(
     viewModel: ChatViewModel = viewModel(),
     handleLogin: () -> Unit
 ) {
-    var isLogin by rememberSaveable  { mutableStateOf(true) }
+    var showLogin by rememberSaveable  { mutableStateOf(true) }
     var email by rememberSaveable  { mutableStateOf("") }
     var password by rememberSaveable  { mutableStateOf("") }
     var username by rememberSaveable  { mutableStateOf("") }
-    var errorMessage by rememberSaveable  { mutableStateOf<String?>(null) }
+    var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -439,7 +439,7 @@ fun AuthScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = if (isLogin) "Login" else "Sign Up",
+            text = if (showLogin) "Login" else "Sign Up",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
@@ -460,7 +460,7 @@ fun AuthScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        if (!isLogin) {
+        if (!showLogin) {
             Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = username,
@@ -473,60 +473,37 @@ fun AuthScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
-                if (isLogin) {
-                    viewModel.login(email, password, {handleLogin()})
+                if (showLogin) {
+                    viewModel.logIn(email, password, { handleLogin() })
                     email = ""
                     password = ""
                 } else {
-                    FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
-                        .addOnSuccessListener { result ->
-                            result.user?.let { user ->
-                                Log.i("AuthScreen", "User created with UID: ${user.uid}")
-                                FirebaseDatabase.getInstance("https://disastermapperchat-default-rtdb.asia-southeast1.firebasedatabase.app/").reference
-                                    .child("users")
-                                    .child(user.uid)
-                                    .child("username")
-                                    .setValue(username)
-                                    .addOnSuccessListener {
-                                        Log.i("AuthScreen", "Username set for UID: ${user.uid}")
-                                        email = ""
-                                        password = ""
-                                        username = ""
-                                        isLogin = true
-                                    }
-                                    .addOnFailureListener { error ->
-                                        Log.e("AuthScreen", "Failed to set username: ${error.localizedMessage}")
-                                        errorMessage = error.localizedMessage
-                                    }
-                            } ?: run {
-                                Log.e("AuthScreen", "User creation failed: User is null")
-                                errorMessage = "User creation failed"
-                            }
-                        }
-                        .addOnFailureListener { exception ->
-                            errorMessage = if (exception is FirebaseAuthException && exception.errorCode == "ERROR_EMAIL_ALREADY_IN_USE") {
-                                "Email address is already in use."
-                            } else {
-                                exception.localizedMessage
-                            }
-                            Log.e("AuthScreen", "Sign up failed: $errorMessage")
-                        }
+                    viewModel.signUp(
+                        email,
+                        password,
+                        username,
+                        onSignUpSuccess = {
+                            showLogin = true
+                        },
+                        onSignUpFailure = { error ->
+                            errorMessage = error
+                        })
+                    email = ""
+                    password = ""
+                    username = ""
                 }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (isLogin) "Login" else "Sign Up")
+            Text(if (showLogin) "Login" else "Sign Up")
         }
 
         TextButton(
-            onClick = { isLogin = !isLogin },
+            onClick = { showLogin = !showLogin },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (isLogin) "Need an account? Sign Up" else "Already have an account? Login")
+            Text(if (showLogin) "Need an account? Sign Up" else "Already have an account? Login")
         }
 
-        errorMessage?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
-        }
     }
 }
