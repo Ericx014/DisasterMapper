@@ -1,6 +1,8 @@
 package com.example.disastermapperfrontend
 
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -13,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -33,6 +36,9 @@ class ChatViewModel : ViewModel() {
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected
 
+    private val _floodLevel = MutableStateFlow(0)
+    val floodLevel: StateFlow<Int> = _floodLevel
+
     init {
         loadMessages()
         loadCurrentUsername()
@@ -41,20 +47,21 @@ class ChatViewModel : ViewModel() {
     }
 
     private fun loadMessages() {
-        database.child("messages").addChildEventListener(object : ChildEventListener {
-            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val message = snapshot.getValue(Message::class.java)
-                message?.let {
-                    _messages.value += it
+        database.child("messages")
+            .addChildEventListener(object : ChildEventListener {
+                override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                    val message = snapshot.getValue(Message::class.java)
+                    message?.let {
+                        _messages.value += it
+                    }
                 }
-            }
 
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onChildRemoved(snapshot: DataSnapshot) {}
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("ChatViewModel", "Database error: ${error.message}", error.toException())
-            }
+                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+                override fun onChildRemoved(snapshot: DataSnapshot) {}
+                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("ChatViewModel", "Database error: ${error.message}", error.toException())
+                }
         })
         Log.i("ChatViewModel", "Messages loaded")
     }
@@ -78,7 +85,7 @@ class ChatViewModel : ViewModel() {
 
     private fun startConnectionCheck() {
         viewModelScope.launch {
-            while(true) {
+            while (true) {
                 checkConnection()
                 kotlinx.coroutines.delay(1000)
             }
@@ -99,18 +106,20 @@ class ChatViewModel : ViewModel() {
                 if (responseCode == HttpURLConnection.HTTP_OK) {
                     val response = connection.inputStream.bufferedReader().use { it.readText() }
                     Log.i("ConnectionStatus", "Response: $response")
-                    _isConnected.value = response.trim().toBoolean()
+
+                    val responseData = JSONObject(response)
+                    _isConnected.value = responseData.getBoolean("video_receiving")
+                    _floodLevel.value = responseData.getInt("flood_level")
                 } else {
-                    throw IOException("HTTP error code: $responseCode")
+                    throw Exception("HTTP error code: $responseCode")
                 }
             }
         } catch (e: Exception) {
             _isConnected.value = false
+            _floodLevel.value = 0
             Log.e("ConnectionStatus", "Error: ${e.javaClass.simpleName} - ${e.message}", e)
         }
     }
-
-
     fun sendMessage(content: String) {
         val user = auth.currentUser
         if (user == null) {
@@ -137,5 +146,16 @@ class ChatViewModel : ViewModel() {
                     Log.e("ChatViewModel", "Failed to send message", e)
                 }
         }
+    }
+
+    fun login(email: String, password: String, handleLogin: () -> Unit){
+        FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
+            .addOnSuccessListener {
+                Log.i("Login", "Login successful for email: $email")
+                handleLogin()
+            }
+            .addOnFailureListener { exception ->
+                Log.e("Login", "Login failed", exception)
+            }
     }
 }

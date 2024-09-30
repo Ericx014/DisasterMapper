@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -24,9 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -42,15 +39,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
@@ -71,22 +64,55 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-//            FirebaseDatabase.getInstance().setPersistenceEnabled(true)
+            FirebaseDatabase.getInstance().setPersistenceEnabled(true)
             FirebaseApp.initializeApp(this)
             MainScreen()
         }
     }
 }
 
+enum class ApplicationPage {
+    Home, Profile
+}
+
 @Composable
-fun ConnectionStatus(viewModel: ChatViewModel = viewModel(), modifier: Modifier = Modifier) {
+fun MainScreen() {
+    var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+    var showChat by remember { mutableStateOf(false) }
+    var currentPage by remember {mutableStateOf(ApplicationPage.Home)}
+
+    if (isLoggedIn) {
+        if (showChat) {
+            ChatScreen(
+                onBackToHome = { showChat = false }
+            )
+        } else {
+            HomeScreen(
+                onChatClick = { showChat = true },
+                currentPage = currentPage,
+                changePage = {currentPage = it},
+                handleLogout = { isLoggedIn = false }
+            )
+        }
+    } else {
+        AuthScreen(
+            handleLogin = { isLoggedIn = true }
+        )
+    }
+}
+
+@Composable
+fun ConnectionStatus(
+    viewModel: ChatViewModel = viewModel(),
+    modifier: Modifier = Modifier
+) {
     val isConnected by viewModel.isConnected.collectAsState()
 
     Surface(
         modifier = Modifier
             .padding(16.dp),
         shape = RoundedCornerShape(12.dp) ,
-        shadowElevation = 6.dp
+        shadowElevation = 3.dp
     ) {
         Text(
             modifier = Modifier.padding(12.dp),
@@ -96,21 +122,14 @@ fun ConnectionStatus(viewModel: ChatViewModel = viewModel(), modifier: Modifier 
     }
 }
 
-
 @Composable
-fun MapScreen(modifier: Modifier = Modifier) {
+fun MapScreen(
+    viewModel: ChatViewModel = viewModel(),
+    modifier: Modifier = Modifier
+) {
+    val floodLevel by viewModel.floodLevel.collectAsState()
+    val centerLocation = GeoPoint(3.0784554644075564, 101.55352203251948 )
     var isFullScreen by remember { mutableStateOf(false) }
-
-    val mapViewModifier = if (isFullScreen) {
-        Modifier.fillMaxSize()
-    } else {
-        Modifier
-            .fillMaxWidth(0.5f)
-            .padding(horizontal = 16.dp)
-            .aspectRatio(1f)
-    }
-
-    val centerLocation = GeoPoint(3.0784554644075564, 101.55352203251948 ) // Replace with your shop's coordinates
 
     Box(
         modifier = Modifier
@@ -118,14 +137,7 @@ fun MapScreen(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.TopCenter
     ) {
         Surface(
-            modifier = mapViewModifier
-                .border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .clip(RoundedCornerShape(16.dp))
-//            shadowElevation = 10.dp
+            modifier = Modifier.fillMaxSize()
         ) {
             AndroidView(
                 factory = { context ->
@@ -138,20 +150,24 @@ fun MapScreen(modifier: Modifier = Modifier) {
                         val marker = Marker(this)
                         marker.position = centerLocation
                         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                        marker.title = "Shop Location"
+                        marker.title = "Flood Risk"
                         overlays.add(marker)
+                        updateMarkerColor(marker, floodLevel)
                     }
                 },
                 update = { mapView ->
                     mapView.onResume()
                     mapView.controller.setCenter(centerLocation)
                     mapView.controller.setZoom(if (isFullScreen) 18.0 else 20.0)
+
+                    val marker = mapView.overlays.find {it is Marker} as? Marker
+                    marker?.let {updateMarkerColor(it, floodLevel)}
                 }
             )
         }
         ConnectionStatus(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
+                .align(Alignment.TopStart)
                 .padding(bottom = 16.dp)
         )
         if (isFullScreen) {
@@ -178,40 +194,31 @@ fun MapScreen(modifier: Modifier = Modifier) {
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 16.dp)
             ) {
-                Text("Expand to Full Screen")
+                Text("Expand Map View")
             }
         }
     }
 }
 
-@Composable
-fun MainScreen() {
-    var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
-    var showChat by remember { mutableStateOf(false) }
-
-    if (isLoggedIn) {
-        if (showChat) {
-            ChatScreen(
-                onBackToHome = { showChat = false }
-            )
-        } else {
-            HomeScreen(
-                onChatClick = { showChat = true },
-                handleLogout = { isLoggedIn = false }
-            )
-        }
-    } else {
-        AuthScreen(
-            handleLogin = { isLoggedIn = true }
-        )
+private fun updateMarkerColor(marker: Marker, floodLevel: Int) {
+    val color = when (floodLevel) {
+        0 -> android.graphics.Color.GREEN
+        1 -> android.graphics.Color.YELLOW
+        2 -> android.graphics.Color.rgb(255, 165, 0)
+        3 -> android.graphics.Color.RED
+        else -> android.graphics.Color.GRAY
     }
+    marker.icon = marker.icon.mutate()
+    marker.icon.setTint(color)
 }
 
 @Composable
-fun SideBarContent(viewModel: ChatViewModel = viewModel(), handleLogout: () -> Unit){
-    val currentUsername by viewModel.currentUsername.collectAsState()
-    val currentUserEmail by viewModel.currentUserEmail.collectAsState()
-
+fun SideBarContent(
+    viewModel: ChatViewModel = viewModel(),
+    currentPage: ApplicationPage,
+    changePage: (ApplicationPage) -> Unit,
+    handleLogout: () -> Unit
+){
     ModalDrawerSheet {
         Spacer(modifier = Modifier.height(2.dp))
         Text(
@@ -223,14 +230,16 @@ fun SideBarContent(viewModel: ChatViewModel = viewModel(), handleLogout: () -> U
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = currentUsername,
-                fontSize = 20.sp
-            )
-            Text(
-                text = currentUserEmail,
-                fontSize = 20.sp
-            )
+            Button(
+                onClick = {changePage(ApplicationPage.Home)}
+            ){
+                Text(text = "Home")
+            }
+            Button(
+                onClick = {changePage(ApplicationPage.Profile)}
+            ){
+                Text(text = "Profile")
+            }
         }
         Spacer(modifier = Modifier.weight(1f))
         Button(
@@ -269,7 +278,12 @@ fun HomeTopBar(onChatClick: () -> Unit, openDrawer: () -> Unit) {
 }
 
 @Composable
-fun HomeScreen(onChatClick: () -> Unit, handleLogout: () -> Unit) {
+fun HomeScreen(
+    onChatClick: () -> Unit,
+    currentPage: ApplicationPage,
+    changePage: (ApplicationPage) -> Unit,
+    handleLogout: () -> Unit
+) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -279,7 +293,13 @@ fun HomeScreen(onChatClick: () -> Unit, handleLogout: () -> Unit) {
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        drawerContent = { SideBarContent(handleLogout = handleLogout) }
+        drawerContent = {
+            SideBarContent(
+                currentPage = currentPage,
+                changePage = changePage,
+                handleLogout = handleLogout
+            )
+        }
     ) {
         Scaffold(
             topBar = {
@@ -292,9 +312,12 @@ fun HomeScreen(onChatClick: () -> Unit, handleLogout: () -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-//                    .verticalScroll(rememberScrollState())
             ) {
-                    MapScreen()
+                when(currentPage) {
+                    ApplicationPage.Home -> MapScreen()
+                    ApplicationPage.Profile -> Text(text = "Profile")
+
+                }
             }
         }
     }
@@ -400,7 +423,8 @@ fun MessageBubble(message: Message, isCurrentUser: Boolean) {
 
 @Composable
 fun AuthScreen(
-    handleLogin: () -> Unit,
+    viewModel: ChatViewModel = viewModel(),
+    handleLogin: () -> Unit
 ) {
     var isLogin by rememberSaveable  { mutableStateOf(true) }
     var email by rememberSaveable  { mutableStateOf("") }
@@ -450,14 +474,9 @@ fun AuthScreen(
         Button(
             onClick = {
                 if (isLogin) {
-                    FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
-                        .addOnSuccessListener {
-                            Log.i("AuthScreen", "Login successful for email: $email, user: $username")
-                            handleLogin()
-                            email = ""
-                            password = ""
-                        }
-                        .addOnFailureListener { errorMessage = it.localizedMessage }
+                    viewModel.login(email, password, {handleLogin()})
+                    email = ""
+                    password = ""
                 } else {
                     FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
                         .addOnSuccessListener { result ->
