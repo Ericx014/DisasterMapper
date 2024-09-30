@@ -140,10 +140,8 @@ class ChatViewModel : ViewModel() {
             database.child("messages").child(messageId).setValue(message)
                 .addOnSuccessListener {
                     Log.i("ChatViewModel", "${currentUsername.value} sent a message")
-                    // Message saved successfully
                 }
                 .addOnFailureListener { e ->
-                    // Handle the error
                     Log.e("ChatViewModel", "Failed to send message", e)
                 }
         }
@@ -152,15 +150,17 @@ class ChatViewModel : ViewModel() {
     fun logIn(
         email: String,
         password: String,
-        handleLogin: () -> Unit
+        onLoginSuccess: () -> Unit,
+        onLoginFail: (String) -> Unit
     ){
         FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
             .addOnSuccessListener {
                 Log.i("Login", "Login successful for email: $email")
-                handleLogin()
+                onLoginSuccess()
             }
             .addOnFailureListener { exception ->
                 Log.e("Login", "Login failed", exception)
+                onLoginFail("Login failed")
             }
     }
 
@@ -169,7 +169,7 @@ class ChatViewModel : ViewModel() {
         password: String,
         username: String,
         onSignUpSuccess: () -> Unit,
-        onSignUpFailure: (String) -> Unit
+        onSignUpFail: (String) -> Unit
     ){
         FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
             .addOnSuccessListener { result ->
@@ -186,16 +186,16 @@ class ChatViewModel : ViewModel() {
                         }
                         .addOnFailureListener { error ->
                             Log.e("SignUp", "Failed to set username: ${error.localizedMessage}")
-                            onSignUpFailure(error.localizedMessage ?: "Sign up error")
+                            onSignUpFail(error.localizedMessage ?: "Sign up error")
                         }
                 } ?: run {
                     Log.e("SignUp", "User creation failed: User cannot be null")
-                    onSignUpFailure("User cannot be null")
+                    onSignUpFail("User cannot be null")
                 }
             }
             .addOnFailureListener { exception ->
                 Log.e("SignUp", "Sign up failed", exception)
-                onSignUpFailure(exception.localizedMessage ?: "Unknown error occurred")
+                onSignUpFail(exception.localizedMessage ?: "Unknown error occurred")
             }
     }
 

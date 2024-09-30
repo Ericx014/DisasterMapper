@@ -474,7 +474,13 @@ fun AuthScreen(
         Button(
             onClick = {
                 if (showLogin) {
-                    viewModel.logIn(email, password, { handleLogin() })
+                    viewModel.logIn(
+                        email,
+                        password,
+                        onLoginSuccess = { handleLogin() },
+                        onLoginFail = { error ->
+                            errorMessage = error
+                        })
                     email = ""
                     password = ""
                 } else {
@@ -485,7 +491,7 @@ fun AuthScreen(
                         onSignUpSuccess = {
                             showLogin = true
                         },
-                        onSignUpFailure = { error ->
+                        onSignUpFail = { error ->
                             errorMessage = error
                         })
                     email = ""
