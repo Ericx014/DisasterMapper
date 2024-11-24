@@ -190,6 +190,7 @@ fun MapScreen(
                 .align(Alignment.TopStart)
                 .padding(bottom = 16.dp)
         )
+        FloodStatus()
         if (isFullScreen) {
             Surface(
                 modifier = Modifier
