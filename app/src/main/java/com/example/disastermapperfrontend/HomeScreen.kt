@@ -108,14 +108,14 @@ fun HomeScreen(
 fun HomeTopBar(onChatClick: () -> Unit, openDrawer: () -> Unit) {
     TopAppBar(
         title = { Text("Disaster Mapper") },
-//        navigationIcon = {
-//            IconButton(onClick = { openDrawer() }) {
-//                Icon(
-//                    imageVector = Icons.Filled.Menu,
-//                    contentDescription = "Menu"
-//                )
-//            }
-//        },
+        navigationIcon = {
+            IconButton(onClick = { openDrawer() }) {
+                Icon(
+                    imageVector = Icons.Filled.Menu,
+                    contentDescription = "Menu"
+                )
+            }
+        },
         actions = {
             IconButton(onClick = onChatClick) {
                 Icon(

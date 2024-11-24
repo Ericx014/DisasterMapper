@@ -26,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -54,6 +57,22 @@ fun MapScreen(
     val floodLevel by viewModel.floodLevel.collectAsState()
     val centerLocation = GeoPoint(3.0784554644075564, 101.55352203251948)
     val isFullScreen by locationViewModel.isFullScreen.collectAsState()
+
+    val detectionViewModel: DetectionViewModel = viewModel()
+    var showDialog by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val floodStatus by detectionViewModel.floodStatus.collectAsState()
+
+    val warningCountDown = 6
+    LaunchedEffect(floodStatus) {
+        if (floodStatus == "Flooding") {
+            showDialog = true
+            coroutineScope.launch {
+                delay((warningCountDown * 1000).toLong())
+                showDialog = false
+            }
+        }
+    }
 
     var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
     var hasLocationPermission by remember {
@@ -191,7 +210,14 @@ fun MapScreen(
                 .align(Alignment.TopStart)
                 .padding(bottom = 16.dp)
         )
-        FloodStatus()
+        if (showDialog) {
+            FloodAlertModal(
+                isVisible = true,
+                onDismiss = { showDialog = false },
+                severity = FloodSeverity.HIGH,
+                countdownTime = warningCountDown
+            )
+        }
         if (isFullScreen) {
             Surface(
                 modifier = Modifier
