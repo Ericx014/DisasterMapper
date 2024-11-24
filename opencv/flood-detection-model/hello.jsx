@@ -1,1 +1,0 @@
-import hello from "./disastermapperchat-firebase-adminsdk-ft6jn-c726072695.json"

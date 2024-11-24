@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -219,9 +220,12 @@ fun MapScreen(
                 onClick = { locationViewModel.enterFullScreen() },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 110.dp)
+                    .padding(bottom = 110.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF598392)
+                )
             ) {
-                Text("Expand Map View")
+                Text("Expand Map")
             }
         }
     }

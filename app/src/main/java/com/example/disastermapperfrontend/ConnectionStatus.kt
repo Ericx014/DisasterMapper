@@ -32,7 +32,8 @@ fun ConnectionStatus(
             .padding(16.dp),
         shape = RoundedCornerShape(8.dp),
 //        shadowElevation = 8.dp,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+//        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+        color = Color.White.copy(alpha = 0.8f)
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
