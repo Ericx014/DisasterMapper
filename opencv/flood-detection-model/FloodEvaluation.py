@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 from pathlib import Path
 
-imgToProcess = "3.jpeg"
+imgToProcess = "9.jpg"
 
 # Load the trained model
 model_path = Path('fine_tuned_flood_detection_model.keras')

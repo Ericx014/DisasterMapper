@@ -6,8 +6,7 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 from flask import Flask, request, jsonify
 from pathlib import Path
-
-#/
+import uuid
 
 app = Flask(__name__)
 
@@ -19,9 +18,7 @@ model = tf.keras.models.load_model(model_path)
 # Define labels for the classes
 labels = ['Flooding', 'No Flooding']
 
-# Prepare image for mobilenet prediction
-def preprocess_image(file):
-    img_path = 'evaluate/' + file
+def preprocess_image(img_path):
     img = image.load_img(img_path, target_size=(224, 224))
     img_array = image.img_to_array(img)
     img_array_expanded_dims = np.expand_dims(img_array, axis=0)
@@ -29,33 +26,41 @@ def preprocess_image(file):
 
 @app.route('/')
 def get_data():
-    # This returns a sample data in JSON format
-    data = {"key": "value"}
-    return jsonify(data)
+    return jsonify({"floodstatus": ""})
 
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'file' not in request.files:
-        return jsonify({'error': 'No file part'})
-
+        return jsonify({"floodstatus": ""})
+    
     img_file = request.files['file']
     
     if img_file.filename == '':
-        return jsonify({'error': 'No selected file'})
+        return jsonify({"floodstatus": ""})
     
-    # Save the uploaded file temporarily
-    img_path = 'temp_image.jpeg'
-    img_file.save(img_path)
-    
-    # Preprocess the image and make prediction
-    preprocessed_image = preprocess_image(img_path)
-    predictions = model.predict(preprocessed_image)
-
-    # Get the maximum probability score for the predicted class
-    result = np.argmax(predictions, axis=1)
-    predicted_class = labels[result[0]]  # Get the label based on the prediction index
-
-    return jsonify({"floodstatus": predicted_class})
+    try:
+        temp_filename = f"temp_{uuid.uuid4().hex}.jpg"
+        temp_path = os.path.join(os.getcwd(), temp_filename)
+        
+        img_file.save(temp_path)
+        preprocessed_image = preprocess_image(temp_path)
+        predictions = model.predict(preprocessed_image)
+        result = np.argmax(predictions, axis=1)[0]
+        
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+            
+        return jsonify({"floodstatus": labels[result]})
+            
+    except Exception:
+        if 'temp_path' in locals():
+            try:
+                os.remove(temp_path)
+            except:
+                pass
+        return jsonify({"floodstatus": ""})
 
 if __name__ == '__main__':
     app.run(debug=True)
