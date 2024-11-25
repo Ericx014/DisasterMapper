@@ -18,7 +18,7 @@ class DetectionViewModel : ViewModel() {
     val floodStatus: StateFlow<String> = _floodStatus
 
     init {
-        loadFloodStatus()
+//        loadFloodStatus()
         listenForFloodStatusChanges()
     }
 

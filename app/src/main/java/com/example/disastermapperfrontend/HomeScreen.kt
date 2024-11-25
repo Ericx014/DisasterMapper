@@ -10,12 +10,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -36,6 +34,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
@@ -47,6 +46,10 @@ fun HomeScreen(
     handleLogout: () -> Unit,
     showChatState: MutableState<Boolean>,
 ) {
+    val chatViewModel: ChatViewModel = viewModel()
+    val messages by chatViewModel.messages.collectAsState()
+    val notification by chatViewModel.notification.collectAsState()
+
     val locationViewModel: LocationViewModel = viewModel()
     val isFullScreen by locationViewModel.isFullScreen.collectAsState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -74,6 +77,13 @@ fun HomeScreen(
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
+            notification?.let { notif ->
+                MessageNotification(
+                    notification = notif,
+                    onDismiss = chatViewModel::dismissNotification,
+                    modifier = Modifier.zIndex(1f)
+                )
+            }
             Scaffold(
                 topBar = {
                     HomeTopBar(
@@ -110,14 +120,14 @@ fun HomeScreen(
 fun HomeTopBar(onChatClick: () -> Unit, openDrawer: () -> Unit) {
     TopAppBar(
         title = { Text("Disaster Mapper") },
-        navigationIcon = {
-            IconButton(onClick = { openDrawer() }) {
-                Icon(
-                    imageVector = Icons.Filled.Menu,
-                    contentDescription = "Menu"
-                )
-            }
-        },
+//        navigationIcon = {
+//            IconButton(onClick = { openDrawer() }) {
+//                Icon(
+//                    imageVector = Icons.Filled.Menu,
+//                    contentDescription = "Menu"
+//                )
+//            }
+//        },
         actions = {
             IconButton(onClick = onChatClick) {
                 Icon(

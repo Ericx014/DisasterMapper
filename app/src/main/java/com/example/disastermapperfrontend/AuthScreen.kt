@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -34,6 +35,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+val MainColor = Color(0xFF598392)
+val MainColorLight = Color(0xFF7A9DAA)
+val MainColorDark = Color(0xFF3D6A7A)
+val BackgroundColor = Color(0xFFF5F7F8)
+val SurfaceColor = Color.White
+val TextColor = Color(0xFF2D3A3F)
+val ErrorColor = Color(0xFFB44141)
 @Composable
 fun AuthScreen(
     viewModel: ChatViewModel = viewModel(),
@@ -51,13 +59,17 @@ fun AuthScreen(
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundColor),
         contentAlignment = Alignment.Center
     ) {
         Column(
             modifier = Modifier
                 .padding(20.dp)
-                .widthIn(min = 300.dp, max = 1000.dp),
+                .widthIn(min = 300.dp, max = 1000.dp)
+                .background(SurfaceColor, RoundedCornerShape(16.dp))
+                .padding(24.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
@@ -65,6 +77,7 @@ fun AuthScreen(
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp),
+                color = TextColor
             )
             if (!showLogin) {
                 AuthTextField(
@@ -161,7 +174,11 @@ fun AuthScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MainColor,
+                    contentColor = Color.White
+                )
             ) {
                 Text(if (showLogin) "Login" else "Sign Up")
             }
@@ -172,9 +189,22 @@ fun AuthScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MainColor
+                )
             ) {
                 Text(if (showLogin) "Need an account? Sign Up" else "Already have an account? Login")
+            }
+
+            errorMessage?.let { error ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = error,
+                    color = ErrorColor,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
         }
     }
@@ -191,12 +221,19 @@ fun AuthTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label) },
+        label = { Text(label, color = TextColor) },
         visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
         modifier = modifier,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White
+            focusedContainerColor = SurfaceColor,
+            unfocusedContainerColor = SurfaceColor,
+            focusedBorderColor = MainColor,
+            unfocusedBorderColor = MainColorLight,
+            focusedLabelColor = MainColor,
+            unfocusedLabelColor = MainColorLight,
+            cursorColor = MainColor,
+            focusedTextColor = TextColor,
+            unfocusedTextColor = TextColor
         )
     )
 }

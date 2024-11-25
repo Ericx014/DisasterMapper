@@ -9,6 +9,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -48,6 +49,15 @@ class ChatViewModel : ViewModel() {
     private val _floodLevel = MutableStateFlow(0)
     val floodLevel: StateFlow<Int> = _floodLevel
 
+    private val _notification = MutableStateFlow<MessageNotification?>(null)
+    val notification: StateFlow<MessageNotification?> = _notification
+
+    data class MessageNotification(
+        val senderUsername: String,
+        val content: String,
+        val timestamp: Long
+    )
+
     init {
         loadMessages()
         loadCurrentUserData()
@@ -62,6 +72,10 @@ class ChatViewModel : ViewModel() {
                     val message = snapshot.getValue(Message::class.java)
                     message?.let {
                         _messages.value += it
+
+                        if (it.sender != auth.currentUser?.uid) {
+                            showNotification(it)
+                        }
                     }
                 }
 
@@ -73,6 +87,24 @@ class ChatViewModel : ViewModel() {
                 }
         })
         Log.i("ChatViewModel", "Messages loaded")
+    }
+
+    private fun showNotification(message: Message) {
+        _notification.value = MessageNotification(
+            senderUsername = message.senderUsername,
+            content = message.content,
+            timestamp = message.timestamp
+        )
+        viewModelScope.launch {
+            delay(3000)
+            if (_notification.value?.timestamp == message.timestamp) {
+                _notification.value = null
+            }
+        }
+    }
+
+    fun dismissNotification() {
+        _notification.value = null
     }
 
     private fun loadCurrentUserData() {
