@@ -24,6 +24,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.MenuItemColors
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -66,8 +68,8 @@ fun MessageBubble(message: Message, isCurrentUser: Boolean) {
                 bottomEnd = if (isCurrentUser) 0.dp else 20.dp
             ),
             shadowElevation = 2.dp,
-            color = if (isCurrentUser) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.secondary,
+            color = if (isCurrentUser) Color(0xFF748cab)
+            else Color.Gray,
             content = {
                 Column(
                     modifier = Modifier.padding(
@@ -80,8 +82,9 @@ fun MessageBubble(message: Message, isCurrentUser: Boolean) {
                     Text(
                         text = message.content,
                         fontSize = 16.sp,
-                        color = if (isCurrentUser) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.onSecondary,
+//                        color = if (isCurrentUser) MaterialTheme.colorScheme.onPrimary
+//                        else MaterialTheme.colorScheme.onSecondary,
+                        color = Color.White,
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
                 }
@@ -128,7 +131,8 @@ fun ChatScreen(
                     }
                     DropdownMenu(
                         modifier = Modifier
-                            .widthIn(min = 250.dp),
+                            .widthIn(min = 250.dp)
+                            .background(Color(0xFFF0F0F0)),
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {
@@ -142,13 +146,14 @@ fun ChatScreen(
                                     viewModel.sendMessage(locationMessage)
                                 }
                                 expanded = false
-                            })
+                            },
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.background,
-                    navigationIconContentColor = MaterialTheme.colorScheme.background
+                    containerColor = Color(0xFF748cab),
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
                 )
             )
         }
@@ -157,7 +162,8 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(color = Color.White)
+//                .background(color = Color(0xFFeff6e0))
+                .background(Color.White)
         ) {
             LazyColumn(
                 modifier = Modifier.weight(1f),
@@ -174,7 +180,7 @@ fun ChatScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFEDEDED)),
+                    .background(Color(0xFFF0F0F0)),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
@@ -182,12 +188,18 @@ fun ChatScreen(
                     onValueChange = { newMessage = it },
                     modifier = Modifier
                         .weight(1f)
-                        .padding(8.dp),
-                    placeholder = { Text("Type a message") },
-                    shape = RoundedCornerShape(8.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+                    placeholder = {
+                        Text(
+                            text="Type a message",
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            color = Color.Gray
+                        )
+                    },
+                    shape = RoundedCornerShape(50),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFEDEDED),
-                        unfocusedBorderColor = Color(0xFFEDEDED),
+                        focusedBorderColor = Color(0xFFF0F0F0),
+                        unfocusedBorderColor = Color(0xFFF0F0F0),
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White
                     )
@@ -204,7 +216,9 @@ fun ChatScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Send Message",
-                        tint = Color.DarkGray
+//                        tint = Color.DarkGray
+                        tint = Color(0xFF748cab),
+                        modifier = Modifier.padding(end = 16.dp)
                     )
                 }
             }

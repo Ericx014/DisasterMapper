@@ -3,6 +3,7 @@ package com.example.disastermapperfrontend
 import android.location.Location
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -40,17 +41,29 @@ fun ConnectionStatus(
             horizontalAlignment = Alignment.Start
         ) {
             Text(
-                text = if (isConnected) "Connection: Valid" else "Connection: Invalid",
-                color = if (isConnected) Color.Green else Color.Red,
+//                text = if (isConnected) "Connection: Valid" else "Connection: Invalid",
+//                color = if (isConnected) Color.Green else Color.Red,
+                text = "Connection: Valid",
                 style = MaterialTheme.typography.bodySmall,
             )
             currentLocation?.let { location ->
                 Text(
                     text = "Lat: ${location.latitude.round(4)}\nLong: ${location.longitude.round(4)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+//                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
-                        .padding(top = 4.dp)
+                )
+            }
+            Row(
+            ){
+                Text(
+                    text = "Flood level: ",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    text = "none",
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
         }

@@ -140,7 +140,7 @@ fun MapScreen(
                         centerMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                         centerMarker.title = "Flood Risk"
                         centerMarker.icon = centerMarker.icon.mutate()
-                        updateMarkerColor(centerMarker, floodLevel)
+                        updateMarkerColor(centerMarker, floodStatus)
                         overlays.add(centerMarker)
 
                         currentLocation?.let { location ->
@@ -157,45 +157,59 @@ fun MapScreen(
                     mapView.controller.setCenter(centerLocation)
                     mapView.controller.setZoom(if (isFullScreen) 18.0 else 20.0)
 
-                    // Handle radius overlay based on fullscreen state
-                    val existingCircle = mapView.overlays.firstOrNull { it is Polygon } as? Polygon
-                    if (isFullScreen) {
-                        // Add or update circle when in fullscreen
-                        val radius = 200.0 // radius in meters
-                        if (existingCircle != null) {
-                            existingCircle.points = createCirclePoints(centerLocation, radius)
-                        } else {
-                            val newCircle = Polygon().apply {
-                                points = createCirclePoints(centerLocation, radius)
-                                fillColor = 0x30FF0000  // Semi-transparent red
-                                strokeColor = 0x80FF0000.toInt() // More opaque red for the border
-                                strokeWidth = 2f
-                            }
-                            mapView.overlays.add(newCircle)
-                        }
-                    } else {
-                        // Remove circle when not in fullscreen
-                        existingCircle?.let {
-                            mapView.overlays.remove(it)
-                        }
+                    // Determine the circle's fill color based on flood status
+                    val fillColor = when (floodStatus) {
+                        "Flooding" -> 0x30FF0000 // Semi-transparent red
+                        "No Flooding" -> 0x3000FF00 // Semi-transparent green
+                        else -> 0x300000FF // Semi-transparent blue (default or unknown status)
                     }
 
+                    val strokeColor = when (floodStatus) {
+                        "Flooding" -> 0x80FF0000.toInt() // Opaque red border
+                        "No Flooding" -> 0x8000FF00.toInt() // Opaque green border
+                        else -> 0x800000FF.toInt() // Opaque blue border
+                    }
+
+                    val circleOverlay = mapView.overlays.firstOrNull { it is Polygon && it.points.isNotEmpty() } as? Polygon
+                    val radius = if (isFullScreen) 200.0 else 50.0
+
+                    if (circleOverlay == null) {
+                        // Create new circle if not present
+                        val newCircle = Polygon().apply {
+                            points = createCirclePoints(centerLocation, radius)
+                            this.fillColor = fillColor
+                            this.strokeColor = strokeColor
+                            strokeWidth = 2f
+                        }
+                        mapView.overlays.add(newCircle)
+                    } else {
+                        // Update existing circle
+                        circleOverlay.points = createCirclePoints(centerLocation, radius)
+                        circleOverlay.fillColor = fillColor
+                        circleOverlay.strokeColor = strokeColor
+                    }
+
+                    // Update the center marker
                     val centerMarker = mapView.overlays.firstOrNull { it is Marker && it.title == "Flood Risk" } as? Marker
                     centerMarker?.let {
                         it.icon = it.icon.mutate()
-                        updateMarkerColor(it, floodLevel)
+                        updateMarkerColor(it, floodStatus)
                     }
 
+                    // Handle current location marker
                     currentLocation?.let { location ->
-                        val currentLocationMarker =
-                            mapView.overlays.firstOrNull { it is Marker && it.title == "Current Location" } as? Marker
+                        val currentLocationMarker = mapView.overlays.firstOrNull {
+                            it is Marker && it.title == "Current Location"
+                        } as? Marker
+
                         if (currentLocationMarker != null) {
                             currentLocationMarker.position = location
                         } else {
-                            val newMarker = Marker(mapView)
-                            newMarker.position = location
-                            newMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                            newMarker.title = "Current Location"
+                            val newMarker = Marker(mapView).apply {
+                                position = location
+                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                title = "Current Location"
+                            }
                             mapView.overlays.add(newMarker)
                         }
                     }
@@ -279,12 +293,10 @@ private fun createCirclePoints(center: GeoPoint, radiusInMeters: Double): ArrayL
     return points
 }
 
-private fun updateMarkerColor(marker: Marker, floodLevel: Int) {
-    val color = when (floodLevel) {
-        0 -> android.graphics.Color.GREEN
-        1 -> android.graphics.Color.YELLOW
-        2 -> android.graphics.Color.rgb(255, 165, 0)
-        3 -> android.graphics.Color.RED
+private fun updateMarkerColor(marker: Marker, floodStatus: String) {
+    val color = when (floodStatus) {
+        "No Flooding" -> android.graphics.Color.GREEN
+        "Flooding" -> android.graphics.Color.RED
         else -> android.graphics.Color.GRAY
     }
     marker.icon = marker.icon.mutate()

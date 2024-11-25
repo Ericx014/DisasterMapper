@@ -136,13 +136,18 @@ fun SideBarContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF598392),
+                    contentColor = Color.White
+                )
             ) {
                 Text(
                     text = "Logout",
-                    color = MaterialTheme.colorScheme.onPrimary
+                    color = Color.White // Ensures text color is white
                 )
             }
+
         }
     }
 }

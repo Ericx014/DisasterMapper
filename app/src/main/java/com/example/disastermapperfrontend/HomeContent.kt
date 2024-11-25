@@ -24,7 +24,7 @@ fun HomeContent(
     ) {
         when(currentPage) {
             ApplicationPage.Home -> MapScreen(context)
-            ApplicationPage.Profile -> Text(text = "Profile")
+            ApplicationPage.Profile -> ProfileScreen()
         }
     }
 }

@@ -95,6 +95,8 @@ fun HomeScreen(
                     currentPage = currentPage,
                     changePage = changePage,
                     onChatClick = onChatClick,
+                    openDrawer = { openDrawer() },
+                    isDrawerOpen = drawerState.isOpen,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                 )
@@ -138,6 +140,8 @@ fun BottomBar(
     onChatClick: () -> Unit,
     currentPage: ApplicationPage,
     changePage: (ApplicationPage) -> Unit,
+    isDrawerOpen: Boolean,
+    openDrawer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -162,7 +166,7 @@ fun BottomBar(
                 icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Chat") },
             )
             NavigationBarItem(
-                selected = currentPage == ApplicationPage.Home,
+                selected = (currentPage == ApplicationPage.Home && !isDrawerOpen),
                 onClick = { changePage(ApplicationPage.Home) },
                 label = { Text("Home") },
                 icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
@@ -175,8 +179,8 @@ fun BottomBar(
                 )
             )
             NavigationBarItem(
-                selected = currentPage == ApplicationPage.Profile,
-                onClick = { changePage(ApplicationPage.Profile)  },
+                selected = isDrawerOpen,
+                onClick = { openDrawer() },
                 label = { Text("Profile") },
                 icon = { Icon(Icons.Default.AccountCircle, contentDescription = "Profile") },
                 colors = NavigationBarItemDefaults.colors(
