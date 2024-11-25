@@ -27,6 +27,8 @@ fun ConnectionStatus(
     currentLocation: GeoPoint? = null
 ) {
     val isConnected by viewModel.isConnected.collectAsState()
+    val detectionViewModel : DetectionViewModel = viewModel()
+    val floodStatus by detectionViewModel.floodStatus.collectAsState()
 
     Surface(
         modifier = modifier
@@ -55,17 +57,17 @@ fun ConnectionStatus(
                     modifier = Modifier
                 )
             }
-            Row(
-            ){
-                Text(
-                    text = "Flood level: ",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    text = "none",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
+//            Row(
+//            ){
+//                Text(
+//                    text = "Flood status: ",
+//                    style = MaterialTheme.typography.bodySmall
+//                )
+//                Text(
+//                    text = {floodStatus},
+//                    style = MaterialTheme.typography.bodySmall
+//                )
+//            }
         }
     }
 }
