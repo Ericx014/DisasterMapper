@@ -1,19 +1,29 @@
 package com.example.disastermapperfrontend
 
 import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -34,9 +44,11 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun HomeScreen(
     context: Context,
@@ -96,7 +108,8 @@ fun HomeScreen(
                         context = context,
                         currentPage = currentPage,
                         innerPadding = innerPadding,
-                        showChatState = showChatState
+                        showChatState = showChatState,
+                        changePage = changePage
                     )
                 }
             )
@@ -116,33 +129,47 @@ fun HomeScreen(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 fun HomeTopBar(onChatClick: () -> Unit, openDrawer: () -> Unit) {
-    TopAppBar(
-        title = { Text("Disaster Mapper") },
-//        navigationIcon = {
-//            IconButton(onClick = { openDrawer() }) {
-//                Icon(
-//                    imageVector = Icons.Filled.Menu,
-//                    contentDescription = "Menu"
-//                )
-//            }
-//        },
-        actions = {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(65.dp)
+            .shadow(elevation = 4.dp, shape = RectangleShape)
+            .background(Color.White)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Navigation Icon (Left side)
+            IconButton(onClick = { openDrawer() }) {
+                Icon(
+                    imageVector = Icons.Filled.AccountCircle,
+                    contentDescription = "Menu",
+                    tint = Color(0xFF01161e)
+                )
+            }
+
+            // Title
+            Text(
+                text = "Disaster Mapper",
+                color = Color(0xFF01161e),
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            // Chat Icon (Right side)
             IconButton(onClick = onChatClick) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Chat,
-                    contentDescription = "Chat"
+                    contentDescription = "Chat",
+                    tint = Color(0xFF01161e)
                 )
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.White,
-            titleContentColor = Color(0xFF01161e),  // Set title text color to white
-            actionIconContentColor = Color(0xFF01161e),
-            navigationIconContentColor = Color(0xFF01161e)
-        )
-    )
+        }
+    }
 }
 
 @Composable
@@ -189,10 +216,10 @@ fun BottomBar(
                 )
             )
             NavigationBarItem(
-                selected = isDrawerOpen,
-                onClick = { openDrawer() },
-                label = { Text("Profile") },
-                icon = { Icon(Icons.Default.AccountCircle, contentDescription = "Profile") },
+                selected = (currentPage == ApplicationPage.History && !isDrawerOpen),
+                onClick = { changePage(ApplicationPage.History) },
+                label = { Text("History") },
+                icon = { Icon(Icons.Default.History, contentDescription = "History") },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = Color.White,
                     selectedTextColor = Color.Black,

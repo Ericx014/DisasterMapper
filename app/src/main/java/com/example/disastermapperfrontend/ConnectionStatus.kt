@@ -45,7 +45,7 @@ fun ConnectionStatus(
             Text(
 //                text = if (isConnected) "Connection: Valid" else "Connection: Invalid",
 //                color = if (isConnected) Color.Green else Color.Red,
-                text = "Connection: Valid",
+                text = "Connection: valid",
                 style = MaterialTheme.typography.bodySmall,
             )
             currentLocation?.let { location ->
@@ -57,17 +57,27 @@ fun ConnectionStatus(
                     modifier = Modifier
                 )
             }
-//            Row(
-//            ){
-//                Text(
-//                    text = "Flood status: ",
-//                    style = MaterialTheme.typography.bodySmall
-//                )
-//                Text(
-//                    text = {floodStatus},
-//                    style = MaterialTheme.typography.bodySmall
-//                )
-//            }
+            Row(
+            ){
+                Text(
+                    text = "Status: ",
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                if (floodStatus == "No Flooding") {
+                    Text(
+                        text = "No Flooding",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF08A770)
+                    )
+                } else if (floodStatus == "Flooding") {
+                    Text(
+                        text = "Flooding",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Red
+                    )
+                }
+            }
         }
     }
 }

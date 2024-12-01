@@ -52,6 +52,8 @@ import org.osmdroid.views.overlay.Polygon
 fun MapScreen(
     context: Context,
     viewModel: ChatViewModel = viewModel(),
+    currentPage: ApplicationPage,
+    changePage: (ApplicationPage) -> Unit,
     locationViewModel: LocationViewModel = viewModel()
 ) {
     val floodLevel by viewModel.floodLevel.collectAsState()
@@ -63,15 +65,15 @@ fun MapScreen(
     val coroutineScope = rememberCoroutineScope()
     val floodStatus by detectionViewModel.floodStatus.collectAsState()
 
-    val warningCountDown = 6
+    val countDown = 7
     LaunchedEffect(floodStatus) {
-        if (floodStatus == "Flooding") {
+//        if (floodStatus == "Flooding") {
             showDialog = true
             coroutineScope.launch {
-                delay((warningCountDown * 1000).toLong())
+                delay((countDown * 1000).toLong())
                 showDialog = false
             }
-        }
+//        }
     }
 
     var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
@@ -155,23 +157,23 @@ fun MapScreen(
                 update = { mapView ->
                     mapView.onResume()
                     mapView.controller.setCenter(centerLocation)
-                    mapView.controller.setZoom(if (isFullScreen) 18.0 else 20.0)
+                    mapView.controller.setZoom(if (isFullScreen) 16.0 else 19.0)
 
                     // Determine the circle's fill color based on flood status
                     val fillColor = when (floodStatus) {
-                        "Flooding" -> 0x30FF0000 // Semi-transparent red
-                        "No Flooding" -> 0x3000FF00 // Semi-transparent green
-                        else -> 0x300000FF // Semi-transparent blue (default or unknown status)
+                        "Flooding" -> 0x30FF0000
+                        "No Flooding" -> 0x3000FF00
+                        else -> 0x300000FF
                     }
 
                     val strokeColor = when (floodStatus) {
-                        "Flooding" -> 0x80FF0000.toInt() // Opaque red border
-                        "No Flooding" -> 0x8000FF00.toInt() // Opaque green border
-                        else -> 0x800000FF.toInt() // Opaque blue border
+                        "Flooding" -> 0x80FF0000.toInt()
+                        "No Flooding" -> 0x8000FF00.toInt()
+                        else -> 0x800000FF.toInt()
                     }
 
                     val circleOverlay = mapView.overlays.firstOrNull { it is Polygon && it.points.isNotEmpty() } as? Polygon
-                    val radius = if (isFullScreen) 200.0 else 50.0
+                    val radius = if (isFullScreen) 400.0 else 160.0
 
                     if (circleOverlay == null) {
                         // Create new circle if not present
@@ -224,12 +226,22 @@ fun MapScreen(
                 .align(Alignment.TopStart)
                 .padding(bottom = 16.dp)
         )
-        if (showDialog) {
+        if (showDialog && floodStatus == "Flooding") {
             FloodAlertModal(
                 isVisible = true,
                 onDismiss = { showDialog = false },
                 severity = FloodSeverity.HIGH,
-                countdownTime = warningCountDown
+                countdownTime = countDown,
+                changePage = changePage,
+                currentPage = currentPage
+            )
+        } else if (showDialog && floodStatus == "No Flooding") {
+            NonFloodingNoticeModal(
+                isVisible = true,
+                onDismiss = { showDialog = false },
+                countdownTime = countDown,
+                changePage = changePage,
+                currentPage = currentPage
             )
         }
         if (isFullScreen) {

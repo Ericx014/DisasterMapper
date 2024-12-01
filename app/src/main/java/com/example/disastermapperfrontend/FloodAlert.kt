@@ -31,13 +31,15 @@ fun FloodAlertModal(
     isVisible: Boolean,
     onDismiss: () -> Unit,
     severity: FloodSeverity = FloodSeverity.HIGH,
-    countdownTime: Int
+    countdownTime: Int,
+    currentPage: ApplicationPage,
+    changePage: (ApplicationPage) -> Unit,
 ) {
     val context = LocalContext.current
     var remainingTime by remember { mutableStateOf(countdownTime) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Get the Vibrator service
+    // Get the vibration service
     val vibrator = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -159,7 +161,7 @@ fun FloodAlertModal(
                         }
 
                         Button(
-                            onClick = { /* Handle view details */ },
+                            onClick = { changePage(ApplicationPage.History) },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = severity.color

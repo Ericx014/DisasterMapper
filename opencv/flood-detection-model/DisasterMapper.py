@@ -5,12 +5,11 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 from flask import Flask, request, jsonify
-from flask_socketio import SocketIO
 from pathlib import Path
 import uuid
-# from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, db
+from datetime import datetime 
 
 try:
     # Specify the path to your service account key JSON file
@@ -30,26 +29,12 @@ except Exception as e:
     raise  
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*", allow_origin="http://*")
 
 # Load the trained model
 model_path = Path('fine_tuned_flood_detection_model.keras')
 assert model_path.exists(), f"Model file does not exist: {model_path}"
 model = tf.keras.models.load_model(model_path)
 labels = ['Flooding', 'No Flooding']
-
-@socketio.on('connect')
-def handle_connect():
-    print("Client connected")
-    socketio.emit('connection_response', {'data': 'Connected successfully!'})
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    print("Client disconnected")
-
-@socketio.on_error()
-def handle_error(e):
-    print(f"SocketIO error: {e}")
 
 def preprocess_image(img_path):
     img = image.load_img(img_path, target_size=(224, 224))
@@ -61,7 +46,7 @@ def preprocess_image(img_path):
 def get_data():
     return jsonify({"floodstatus": ""})
 
-@app.route('/predict', methods=['POST'])
+@app.route('/detect', methods=['POST'])
 def predict():
     if 'file' not in request.files:
         return jsonify({"floodstatus": ""})
@@ -86,13 +71,17 @@ def predict():
         except:
             pass
         
-        # Emit the flood status to all connected clients
-        socketio.emit('flood_status', {'status': flood_status})
-        print(f"Emitted flood status: {flood_status}")
+        current_timestamp = datetime.now().isoformat()
         
+        flood_data = {
+            'status': flood_status,
+            'timestamp': current_timestamp
+        }
+
         ref = db.reference('/flood_status')
-        ref.set(flood_status)
-        print(f"Predicted/Detected status: {flood_status}")
+				# ref.set(flood_data)
+        ref.push(flood_data)
+        print(f"Detected flood status: {flood_status}")
         return jsonify({"floodstatus": flood_status})
             
     except Exception:
@@ -104,4 +93,4 @@ def predict():
         return jsonify({"floodstatus": ""})
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=8000, debug=True)
+    app.run(host='0.0.0.0', port=8000, debug=True)

@@ -1,5 +1,7 @@
 # Loading required libraries and functions
 import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import shutil
 import random
 import itertools
@@ -43,34 +45,24 @@ valid_batches = ImageDataGenerator(preprocessing_function=tf.keras.applications.
 test_batches = ImageDataGenerator(preprocessing_function=tf.keras.applications.mobilenet.preprocess_input).flow_from_directory(
     directory=test_path, target_size=(224,224), batch_size=10, shuffle=False)
 
-#Loading pre-trained lightweight mobilenet image classifier
 mobile = tf.keras.applications.mobilenet.MobileNet(weights='imagenet', include_top=False)
-# mobile.summary()
 
-# Store all layers of the original mobilenet except the last 5 layers in variable x
-# There is no predefined logic behind this, it just gives the optimal results for this task
-# Also, we will be only training the last 12 layers of the mobilenet during finetuning as we want 
-# it to keep all of the previously learned weights 
 x = mobile.layers[-12].output
 x
 
-# Create global pooling, dropout and a binary output layer, as we want our model to be a binary classifier, 
-# i.e. to classify flooding and no flooding
 x = keras.layers.GlobalAveragePooling2D()(x)
-x = keras.layers.Dropout(0.2)(x)  # Regularize with dropout
+x = keras.layers.Dropout(0.2)(x)
 output = Dense(units=2, activation='sigmoid')(x)
 
-# Construct the new fine-tuned mode
 model = Model(inputs=mobile.input, outputs=output)
 
-# Freez weights of all the layers except for the last five layers in our new model, 
-# meaning that only the last 12 layers of the model will be trained.
 for layer in model.layers[:-23]:
     layer.trainable = False
     
 model.summary()
 
 # Compile the model
+
 model.compile(optimizer=Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
 
 model.fit(x=train_batches,
@@ -80,6 +72,7 @@ model.fit(x=train_batches,
           epochs=10,
           verbose=2
 )
+
 # Saving and loading our trained for future use
 
 model.save("fine_tuned_flood_detection_model.keras")
